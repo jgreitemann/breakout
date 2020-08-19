@@ -1,7 +1,12 @@
-# Learn how to build 2D HTML5 Breakout game with pure JavaScript
+HTML5 Breakout Game
+===================
 
-Visit **[breakout.enclavegames.com](http://breakout.enclavegames.com/)** page for the list of available lessons.
+[![view on GitHub Pages](https://img.shields.io/badge/view-GitHub%20Pages-blueviolet)][1]
+[![forked from end3r/Gamedev-Canvas-workshop](https://img.shields.io/badge/forks-end3r%2FGamedev--Canvas--workshop-blue)][3]
+[![License](https://img.shields.io/github/license/jgreitemann/breakout)](LICENSE.md)
 
-![MDN Breakout gameplay](https://mdn.mozillademos.org/files/10383/mdn-breakout-gameplay.png)
+This is a fork of the [MDN "2D breakout game using pure JavaScript" tutorial project][2] by Andrzej Mazur and Mozilla Contributors, originally hosted on GitHub at [end3r/Gamedev-Canvas-workshop][3].
 
-In this step-by-step tutorial we create a simple MDN Breakout game written entirely in pure JavaScript and rendered on HTML5 Canvas. Every step has editable, live samples available to play with so you can see what the intermediate stages should look like. You will learn the basics of using the Canvas element to implement fundamental game mechanics like rendering and moving images, collision detection, control machanisms, and winning and losing states.
+[1]: https://jgreitemann.github.io/breakout
+[2]: https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript
+[3]: https://github.com/end3r/Gamedev-Canvas-workshop

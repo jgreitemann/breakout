@@ -1,42 +1,209 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8" />
-    <title>Learn how to build 2D HTML5 Breakout game in pure JavaScript</title>
+    <title>Breakout</title>
     <style>
-        body { width: 650px; margin: 0 auto; }
-        a { color: #0095DD; text-decoration: none; }
-        a:hover { text-decoration: underline; }
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        canvas {
+            background: #eee;
+            display: block;
+            margin: 0 auto;
+        }
     </style>
 </head>
+
 <body>
 
-<h1>Learn how to build 2D HTML5 Breakout game in pure JavaScript</h1>
+    <canvas id="myCanvas" width="480" height="320"></canvas>
 
-<p>In this step-by-step <a href="https://github.com/end3r/Gamedev-Canvas-workshop">tutorial</a> we create a simple MDN Breakout game written entirely in pure JavaScript and rendered on HTML5 Canvas. Every step has editable, live samples available to play with so you can see what the intermediate stages should look like. You will learn the basics of using the Canvas element to implement fundamental game mechanics like rendering and moving images, collision detection, control machanisms, and winning and losing states.</p>
+    <script>
+        var canvas = document.getElementById("myCanvas");
+        var ctx = canvas.getContext("2d");
+        var ballRadius = 10;
+        var x = canvas.width / 2;
+        var y = canvas.height - 30;
+        var dx = 2;
+        var dy = -2;
+        var paddleHeight = 10;
+        var paddleWidth = 75;
+        var paddleX = (canvas.width - paddleWidth) / 2;
+        var rightPressed = false;
+        var leftPressed = false;
+        var brickRowCount = 5;
+        var brickColumnCount = 3;
+        var brickWidth = 75;
+        var brickHeight = 20;
+        var brickPadding = 10;
+        var brickOffsetTop = 30;
+        var brickOffsetLeft = 30;
+        var score = 0;
+        var lives = 3;
 
-<p><img src="https://mdn.mozillademos.org/files/10383/mdn-breakout-gameplay.png" alt="MDN Breakout gameplay" /></p>
+        var bricks = [];
+        for (var c = 0; c < brickColumnCount; c++) {
+            bricks[c] = [];
+            for (var r = 0; r < brickRowCount; r++) {
+                bricks[c][r] = { x: 0, y: 0, status: 1 };
+            }
+        }
 
-<p>To get the most out of this series of articles you should already have basic to intermediate JavaScript knowledge. After working through this tutorial you should be able to build your own simple Web games.</p>
+        document.addEventListener("keydown", keyDownHandler, false);
+        document.addEventListener("keyup", keyUpHandler, false);
+        document.addEventListener("mousemove", mouseMoveHandler, false);
 
-<h2><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript">2D breakout game using pure JavaScript</a></h2>
+        function keyDownHandler(e) {
+            if (e.keyCode == 39) {
+                rightPressed = true;
+            }
+            else if (e.keyCode == 37) {
+                leftPressed = true;
+            }
+        }
+        function keyUpHandler(e) {
+            if (e.keyCode == 39) {
+                rightPressed = false;
+            }
+            else if (e.keyCode == 37) {
+                leftPressed = false;
+            }
+        }
+        function mouseMoveHandler(e) {
+            var relativeX = e.clientX - canvas.offsetLeft;
+            if (relativeX > 0 && relativeX < canvas.width) {
+                paddleX = relativeX - paddleWidth / 2;
+            }
+        }
+        function collisionDetection() {
+            for (var c = 0; c < brickColumnCount; c++) {
+                for (var r = 0; r < brickRowCount; r++) {
+                    var b = bricks[c][r];
+                    if (b.status == 1) {
+                        if (x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
+                            dy = -dy;
+                            b.status = 0;
+                            score++;
+                            if (score == brickRowCount * brickColumnCount) {
+                                alert("YOU WIN, CONGRATS!");
+                                document.location.reload();
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-<ol>
-    <li><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Create_the_Canvas_and_draw_on_it">Create the Canvas and draw on it</a> - <a href="http://breakout.enclavegames.com/lesson01.html">example #1</a></li>
-    <li><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Move_the_ball">Move the ball</a> - <a href="http://breakout.enclavegames.com/lesson02.html">example #2</a></li>
-    <li><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Bounce_off_the_walls">Bounce off the walls</a> - <a href="http://breakout.enclavegames.com/lesson03.html">example #3</a></li>
-    <li><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Paddle_and_keyboard_controls">Paddle and keyboard controls</a> - <a href="http://breakout.enclavegames.com/lesson04.html">example #4</a></li>
-    <li><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Game_over">Game over</a> - <a href="http://breakout.enclavegames.com/lesson05.html">example #5</a></li>
-    <li><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Build_the_brick_field">Build the brick field</a> - <a href="http://breakout.enclavegames.com/lesson06.html">example #6</a></li>
-    <li><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Collision_detection">Collision detection</a> - <a href="http://breakout.enclavegames.com/lesson07.html">example #7</a></li>
-    <li><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Track_the_score_and_win">Track the score and win</a> - <a href="http://breakout.enclavegames.com/lesson08.html">example #8</a></li>
-    <li><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Mouse_controls">Mouse controls</a> - <a href="http://breakout.enclavegames.com/lesson09.html">example #9</a></li>
-    <li><a href="https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Finishing_up">Finishing up</a> - <a href="http://breakout.enclavegames.com/lesson10.html">example #10</a></li>
-</ol>
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+            ctx.fillStyle = "#0095DD";
+            ctx.fill();
+            ctx.closePath();
+        }
+        function drawPaddle() {
+            ctx.beginPath();
+            ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+            ctx.fillStyle = "#0095DD";
+            ctx.fill();
+            ctx.closePath();
+        }
+        function drawBricks() {
+            for (var c = 0; c < brickColumnCount; c++) {
+                for (var r = 0; r < brickRowCount; r++) {
+                    if (bricks[c][r].status == 1) {
+                        var brickX = (r * (brickWidth + brickPadding)) + brickOffsetLeft;
+                        var brickY = (c * (brickHeight + brickPadding)) + brickOffsetTop;
+                        bricks[c][r].x = brickX;
+                        bricks[c][r].y = brickY;
+                        ctx.beginPath();
+                        ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                        ctx.fillStyle = "#0095DD";
+                        ctx.fill();
+                        ctx.closePath();
+                    }
+                }
+            }
+        }
+        function drawScore() {
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "#0095DD";
+            ctx.fillText("Score: " + score, 8, 20);
+        }
+        function drawLives() {
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "#0095DD";
+            ctx.fillText("Lives: " + lives, canvas.width - 65, 20);
+        }
 
-<p>Starting with pure JavaScript is the best way to get a solid knowledge of web game development. After that, you can pick any framework you like and use it for your projects. Frameworks are just tools built with the JavaScript language; so even if you plan on working with them, it's good to learn about the language itself first to know what exactly is going on under the hood. Frameworks speed up development time and help take care of boring parts of the game, but if something is not working as expected, you can always try to debug that or just write your own solutions in pure JavaScript.</p>
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBricks();
+            drawBall();
+            drawPaddle();
+            drawScore();
+            drawLives();
+            collisionDetection();
 
-<p>You can visit the <a href="https://github.com/end3r/Gamedev-Canvas-workshop">GitHub repository</a> of this tutorial to get the source code of all the lessons.</p>
+            if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+                dx = -dx;
+            }
+            if (y + dy < ballRadius) {
+                dy = -dy;
+            }
+            else if (y + dy > canvas.height - ballRadius) {
+                if (x > paddleX && x < paddleX + paddleWidth) {
+                    dy = -dy;
+                }
+                else {
+                    lives--;
+                    if (!lives) {
+                        alert("GAME OVER");
+                        document.location.reload();
+                    }
+                    else {
+                        x = canvas.width / 2;
+                        y = canvas.height - 30;
+                        dx = 3;
+                        dy = -3;
+                        paddleX = (canvas.width - paddleWidth) / 2;
+                    }
+                }
+            }
+
+            if (rightPressed && paddleX < canvas.width - paddleWidth) {
+                paddleX += 7;
+            }
+            else if (leftPressed && paddleX > 0) {
+                paddleX -= 7;
+            }
+
+            x += dx;
+            y += dy;
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+
+    <footer>
+        <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">
+            <img alt="Creative Commons License CC-BY-SA 4.0" style="border-width:0"
+                src="https://i.creativecommons.org/l/by-sa/4.0/80x15.png" />
+        </a>
+        <span>
+            This is a derivative of the <a
+                href="https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript">MDN "2D
+                breakout game using pure JavaScript" tutorial project</a> by Andrzej Mazur and Mozilla Contributors used
+            under <a href="https://creativecommons.org/licenses/by-sa/2.5/">CC BY-SA 2.5</a>. This work is itself
+            licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
+        </span>
+    </footer>
 
 </body>
+
 </html>
