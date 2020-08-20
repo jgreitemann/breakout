@@ -1,29 +1,31 @@
 var canvas = document.getElementById('myCanvas');
 var ctx = canvas.getContext('2d');
-var ballRadius = 10;
+var ballRadius = 12;
 var x = canvas.width / 2;
 var y = canvas.height - 30;
-var dx = 2;
-var dy = -2;
-var paddleHeight = 10;
+var dx = 3;
+var dy = -3;
+var paddleHeight = 12;
 var paddleWidth = 75;
 var paddleX = (canvas.width - paddleWidth) / 2;
 var rightPressed = false;
 var leftPressed = false;
-var brickRowCount = 5;
-var brickColumnCount = 3;
-var brickWidth = 75;
-var brickHeight = 20;
+var brickColumnCount = 8;
+var brickRowCount = 6;
 var brickPadding = 10;
-var brickOffsetTop = 30;
-var brickOffsetLeft = 30;
+var brickTopMargin = 30;
+var brickHorizontalMargin = 30;
+var brickWidth = (canvas.width - 2 * brickHorizontalMargin -
+                  (brickColumnCount - 1) * brickPadding) /
+    brickColumnCount;
+var brickHeight = 20;
 var score = 0;
 var lives = 3;
 
 var bricks = [];
-for (var c = 0; c < brickColumnCount; c++) {
+for (var c = 0; c < brickRowCount; c++) {
   bricks[c] = [];
-  for (var r = 0; r < brickRowCount; r++) {
+  for (var r = 0; r < brickColumnCount; r++) {
     bricks[c][r] = {x: 0, y: 0, status: 1};
   }
 }
@@ -49,8 +51,8 @@ function mouseMoveHandler(e) {
   }
 }
 function collisionDetection() {
-  for (var c = 0; c < brickColumnCount; c++) {
-    for (var r = 0; r < brickRowCount; r++) {
+  for (var c = 0; c < brickRowCount; c++) {
+    for (var r = 0; r < brickColumnCount; r++) {
       var b = bricks[c][r];
       if (b.status == 1) {
         if (x > b.x && x < b.x + brickWidth && y > b.y &&
@@ -58,7 +60,7 @@ function collisionDetection() {
           dy = -dy;
           b.status = 0;
           score++;
-          if (score == brickRowCount * brickColumnCount) {
+          if (score == brickColumnCount * brickRowCount) {
             alert('YOU WIN, CONGRATS!');
             document.location.reload();
           }
@@ -83,11 +85,11 @@ function drawPaddle() {
   ctx.closePath();
 }
 function drawBricks() {
-  for (var c = 0; c < brickColumnCount; c++) {
-    for (var r = 0; r < brickRowCount; r++) {
+  for (var c = 0; c < brickRowCount; c++) {
+    for (var r = 0; r < brickColumnCount; r++) {
       if (bricks[c][r].status == 1) {
-        var brickX = (r * (brickWidth + brickPadding)) + brickOffsetLeft;
-        var brickY = (c * (brickHeight + brickPadding)) + brickOffsetTop;
+        var brickX = (r * (brickWidth + brickPadding)) + brickHorizontalMargin;
+        var brickY = (c * (brickHeight + brickPadding)) + brickTopMargin;
         bricks[c][r].x = brickX;
         bricks[c][r].y = brickY;
         ctx.beginPath();
