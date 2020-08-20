@@ -11,8 +11,8 @@ var paddleWidth = 75;
 var paddleX = (canvas.width - paddleWidth) / 2;
 var rightPressed = false;
 var leftPressed = false;
-var brickColumnCount = 12;
-var brickRowCount = 10;
+var brickColumnCount = 10;
+var brickRowCount = 6;
 var brickPadding = 10;
 var brickTopMargin = 30;
 var brickHorizontalMargin = 30;
@@ -20,6 +20,8 @@ var brickWidth = (canvas.width - 2 * brickHorizontalMargin -
                   (brickColumnCount - 1) * brickPadding) /
     brickColumnCount;
 var brickHeight = 20;
+var brickHWindow = 5;
+var brickLWindow = 0.03;
 var score = 0;
 var lives = 3;
 
@@ -27,6 +29,8 @@ var palette = [
   {h: 0, s: .97, l: .45}, {h: 33, s: 1.0, l: .50}, {h: 56, s: 1.0, l: .48},
   {h: 138, s: 1.0, l: .25}, {h: 222, s: 1.0, l: .50}, {h: 292, s: .90, l: .35}
 ];
+
+// palette = [{h: 120, s: 1.0, l: 0.2}, {h: 120, s: 0.6, l: 0.5}];
 
 var bricks = [];
 for (var r = 0; r < brickRowCount; r++) {
@@ -38,13 +42,16 @@ for (var r = 0; r < brickRowCount; r++) {
   for (var c = 0; c < brickColumnCount; c++) {
     var brickX = (c * (brickWidth + brickPadding)) + brickHorizontalMargin;
     var brickY = (r * (brickHeight + brickPadding)) + brickTopMargin;
+    var brickH = palette[i].h * (1 - ratio) + palette[j].h * ratio;
+    brickH += (brickHWindow * (2 * Math.random() - 1)) % 360;
+    var brickS = palette[i].s * (1 - ratio) + palette[j].s * ratio;
+    var brickL = palette[i].l * (1 - ratio) + palette[j].l * ratio;
+    brickL += brickLWindow * (2 * Math.random() - 1);
     bricks[r][c] = {
       x: brickX,
       y: brickY,
       status: 1,
-      color: `hsl(${palette[i].h * (1 - ratio) + palette[j].h * ratio}deg, ${
-          (palette[i].s * (1 - ratio) + palette[j].s * ratio) *
-          100}%, ${(palette[i].l * (1 - ratio) + palette[j].l * ratio) * 100}%)`
+      color: `hsl(${brickH}deg, ${brickS * 100}%, ${brickL * 100}%)`
     };
   }
 }
@@ -92,14 +99,14 @@ function collisionDetection() {
 function drawBall() {
   ctx.beginPath();
   ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
-  ctx.fillStyle = '#0095DD';
+  ctx.fillStyle = 'black';
   ctx.fill();
   ctx.closePath();
 }
 function drawPaddle() {
   ctx.beginPath();
   ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
-  ctx.fillStyle = '#0095DD';
+  ctx.fillStyle = 'black';
   ctx.fill();
   ctx.closePath();
 }
