@@ -1,7 +1,8 @@
 var canvas = document.getElementById('myCanvas');
 var ctx = canvas.getContext('2d');
 var ballRadius = 12;
-var v = 2;
+var v = 3;
+var paddleConvexity = 2;
 var paddleHeight = 12;
 var paddleWidth = 75;
 var brickColumnCount = 10;
@@ -67,8 +68,8 @@ function resetGame() {
 function resetRound() {
   x = canvas.width / 2;
   y = canvas.height - 2 * ballRadius - paddleHeight;
-  dx = 1;
-  dy = -1;
+  dx = Math.SQRT1_2;
+  dy = -Math.SQRT1_2;
   leftPressed = false;
   rightPressed = false;
   lostRound = false;
@@ -149,7 +150,7 @@ function drawScore() {
 function drawLives() {
   ctx.font = '16px Arial';
   ctx.fillStyle = 'black';
-  ctx.fillText('Lives: ' + lives, canvas.width - 65, 20);
+  ctx.fillText('Lives: ' + lives, canvas.width - 85, 20);
 }
 
 function draw() {
@@ -167,8 +168,11 @@ function draw() {
   if (y + v * dy < ballRadius) {
     dy = -dy;
   } else if (y + v * dy > canvas.height - ballRadius - paddleHeight) {
-    if (!lostRound && x > paddleX && x < paddleX + paddleWidth) {
-      dy = -dy;
+    var q = 2 * (x - paddleX) / paddleWidth - 1;
+    if (!lostRound && q > -1 && q < 1) {
+      var s = dx / dy + paddleConvexity * q;
+      dy = -1. / Math.sqrt(s * s + 1);
+      dx = -s * dy;
     } else {
       lostRound = true;
       if (y + v * dy > canvas.height - ballRadius) {
