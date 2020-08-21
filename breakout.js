@@ -1,31 +1,42 @@
 var canvas = document.getElementById('myCanvas');
 var ctx = canvas.getContext('2d');
-var ballRadius = 12;
-var v = 3;
-var paddleConvexity = 2;
-var paddleHeight = 12;
-var paddleWidth = 75;
-var brickColumnCount = 10;
-var brickRowCount = 15;
-var brickPadding = 10;
-var brickTopMargin = 30;
-var brickHorizontalMargin = 30;
-var brickWidth = (canvas.width - 2 * brickHorizontalMargin -
-                  (brickColumnCount - 1) * brickPadding) /
-    brickColumnCount;
-var brickHeight = 20;
-var brickHWindow = 5;
-var brickLWindow = 0.03;
 
-var x, y;
-var dx, dy;
+// Gameplay parameters
+const ballRadius = 15;
+const v = 8;
+const paddleConvexity = 2;
+const paddleHeight = 8;
+const paddleWidth = 120;
+const brickColumnCount = 10;
+const brickRowCount = 6;
+const brickPadding = 10;
+const brickTopMargin = 30;
+const brickHorizontalMargin = 30;
+const brickHeight = 30;
+const brickHWindow = 5;
+const brickLWindow = 0.03;
+const minCollisionTime = 1e-2;
+const runoffHeight = 300;
+
+// Dependent constants
+const brickWidth = (canvas.width - 2 * brickHorizontalMargin -
+                    (brickColumnCount - 1) * brickPadding) /
+    brickColumnCount;
+const brickRadius =
+    Math.sqrt(Math.pow(brickWidth / 2, 2) + Math.pow(brickHeight / 2, 2));
+const brickSafetyZoneSq = Math.pow(brickRadius + ballRadius, 2);
+
+// Game state
+var t;
+var rx, ry;
+var nx, ny;
 var paddleX;
 var score;
 var lives;
 var bricks;
 var leftPressed;
 var rightPressed;
-var lostRound;
+var nextColl;
 
 var palette = [
   {h: 0, s: .97, l: .45}, {h: 33, s: 1.0, l: .50}, {h: 56, s: 1.0, l: .48},
@@ -42,7 +53,8 @@ function resetGame() {
   bricks = [];
   for (var r = 0; r < brickRowCount; r++) {
     bricks[r] = [];
-    var ratio = r * (palette.length - 1) / (brickRowCount - 1);
+    var ratio =
+        brickRowCount > 1 ? r * (palette.length - 1) / (brickRowCount - 1) : 0;
     var i = Math.floor(ratio);
     var j = Math.ceil(ratio);
     ratio -= i;
@@ -66,13 +78,14 @@ function resetGame() {
 }
 
 function resetRound() {
-  x = canvas.width / 2;
-  y = canvas.height - 2 * ballRadius - paddleHeight;
-  dx = Math.SQRT1_2;
-  dy = -Math.SQRT1_2;
+  t = 0;
+  rx = canvas.width / 2;
+  ry = canvas.height - ballRadius - paddleHeight;
+  nx = Math.SQRT1_2;
+  ny = -Math.SQRT1_2;
   leftPressed = false;
   rightPressed = false;
-  lostRound = false;
+  nextColl = nextCollision();
 }
 
 function keyDownHandler(e) {
@@ -82,6 +95,7 @@ function keyDownHandler(e) {
     leftPressed = true;
   }
 }
+
 function keyUpHandler(e) {
   if (e.keyCode == 39) {
     rightPressed = false;
@@ -89,24 +103,25 @@ function keyUpHandler(e) {
     leftPressed = false;
   }
 }
+
 function mouseMoveHandler(e) {
   var relativeX = e.clientX - canvas.offsetLeft;
   if (relativeX > 0 && relativeX < canvas.width) {
     paddleX = relativeX - paddleWidth / 2;
   }
 }
+
 function collisionDetection() {
   for (var r = 0; r < brickRowCount; r++) {
     for (var c = 0; c < brickColumnCount; c++) {
       var b = bricks[r][c];
       if (b.status == 1) {
-        if (x > b.x && x < b.x + brickWidth && y > b.y &&
-            y < b.y + brickHeight) {
-          dy = -dy;
+        if (rx > b.x && rx < b.x + brickWidth && ry > b.y &&
+            ry < b.y + brickHeight) {
+          ny = -ny;
           b.status = 0;
           score++;
           if (score == brickColumnCount * brickRowCount) {
-            alert('YOU WIN, CONGRATS!');
             resetGame();
           }
         }
@@ -115,7 +130,124 @@ function collisionDetection() {
   }
 }
 
+function closestApproachSquared(px, py) {
+  var dx = px - rx;
+  var dy = py - ry;
+  var parallel = dx * nx + dy * ny;
+  dx -= parallel * nx;
+  dy -= parallel * ny;
+  return dx * dx + dy * dy;
+}
+
+function elasticBounce(px, py) {
+  var dx = rx - px;
+  var dy = ry - py;
+  var parallel = (nx * dx + ny * dy) / Math.pow(ballRadius, 2);
+  nx -= 2 * parallel * dx;
+  ny -= 2 * parallel * dy;
+  var norm = Math.sqrt(nx * nx + ny * ny);
+  nx /= norm;
+  ny /= norm;
+}
+
+function brickImpactAction(b) {
+  return (px, py) => {
+    elasticBounce(px, py);
+    b.status = 0;
+    score++;
+    if (score == brickRowCount * brickColumnCount) {
+      resetGame();
+      alert('YOU WIN, CONGRATS!');
+    }
+  };
+}
+
+function paddleBounce(px, py) {
+  var q = 2 * (px - paddleX) / paddleWidth - 1;
+  if (q > -1 && q < 1) {
+    var s = nx / ny + paddleConvexity * q;
+    ny = -1. / Math.sqrt(s * s + 1);
+    nx = -s * ny;
+  }
+}
+
+function ballLost(px, py) {
+  lives--;
+  if (lives == 0) {
+    resetGame();
+    alert('GAME OVER!');
+  } else {
+    resetRound();
+  }
+}
+
+function pointCollision(px, py, R, func) {
+  var dx = px - rx;
+  var dy = py - ry;
+  var parallel = dx * nx + dy * ny;
+  var discriminant = parallel * parallel - (dx * dx + dy * dy) + R * R;
+  if (discriminant < 0) return null;
+  return {vt: parallel - Math.sqrt(discriminant), action: () => func(px, py)};
+}
+
+function edgeCollision(px, py, wx, wy, tx, ty, func) {
+  var qx = px + tx;
+  var qy = py + ty;
+  var sx = qx - rx;
+  var sy = qy - ry;
+  var vt = (sy * wx - sx * wy) / (ny * wx - nx * wy);
+  var alpha = (sy * nx - sx * ny) / (ny * wx - nx * wy);
+  if (alpha < 0 || alpha > 1) return null;
+  return {vt: vt, action: () => func(px + alpha * wx, py + alpha * wy)};
+}
+
+function nextCollision() {
+  var collisions = [
+    edgeCollision(0, 0, canvas.width, 0, 0, ballRadius, elasticBounce),
+    edgeCollision(
+        0, 0, 0, canvas.height + runoffHeight, ballRadius, 0, elasticBounce),
+    edgeCollision(
+        canvas.width, 0, 0, canvas.height + runoffHeight, -ballRadius, 0,
+        elasticBounce),
+    edgeCollision(
+        0, canvas.height - paddleHeight, canvas.width, 0, 0, -ballRadius,
+        paddleBounce),
+    edgeCollision(
+        0, canvas.height + runoffHeight, canvas.width, 0, 0, -ballRadius,
+        ballLost)
+  ];
+  for (var r = 0; r < brickRowCount; r++) {
+    for (var c = 0; c < brickColumnCount; c++) {
+      var b = bricks[r][c];
+      if (b.status == 1) {
+        if (closestApproachSquared(
+                b.x + brickWidth / 2, b.y + brickHeight / 2) <
+            brickSafetyZoneSq) {
+          var impact = brickImpactAction(b);
+          collisions.push(
+              pointCollision(b.x, b.y, ballRadius, impact),
+              pointCollision(b.x, b.y + brickHeight, ballRadius, impact),
+              pointCollision(b.x + brickWidth, b.y, ballRadius, impact),
+              pointCollision(
+                  b.x + brickWidth, b.y + brickHeight, ballRadius, impact),
+              edgeCollision(b.x, b.y, brickWidth, 0, 0, -ballRadius, impact),
+              edgeCollision(b.x, b.y, 0, brickHeight, -ballRadius, 0, impact),
+              edgeCollision(
+                  b.x + brickWidth, b.y, 0, brickHeight, ballRadius, 0, impact),
+              edgeCollision(
+                  b.x, b.y + brickHeight, brickWidth, 0, 0, ballRadius,
+                  impact));
+        }
+      }
+    }
+  }
+  return collisions.filter(col => col && col.vt >= minCollisionTime)
+      .reduce((acc, col) => acc.vt < col.vt ? acc : col);
+}
+
 function drawBall() {
+  var x = rx + v * t * nx;
+  var y = ry + v * t * ny;
   ctx.beginPath();
   ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
   ctx.fillStyle = 'black';
@@ -160,30 +292,22 @@ function draw() {
   drawPaddle();
   drawScore();
   drawLives();
-  collisionDetection();
 
-  if (x + v * dx > canvas.width - ballRadius || x + v * dx < ballRadius) {
-    dx = -dx;
-  }
-  if (y + v * dy < ballRadius) {
-    dy = -dy;
-  } else if (y + v * dy > canvas.height - ballRadius - paddleHeight) {
-    var q = 2 * (x - paddleX) / paddleWidth - 1;
-    if (!lostRound && q > -1 && q < 1) {
-      var s = dx / dy + paddleConvexity * q;
-      dy = -1. / Math.sqrt(s * s + 1);
-      dx = -s * dy;
+  var remainingTime = 1.0;
+  while (remainingTime > minCollisionTime) {
+    if (t + remainingTime > nextColl.vt / v) {
+      remainingTime = t + remainingTime - nextColl.vt / v;
+
+      t = 0;
+      rx += nextColl.vt * nx;
+      ry += nextColl.vt * ny;
+
+      nextColl.action();
+
+      nextColl = nextCollision();
     } else {
-      lostRound = true;
-      if (y + v * dy > canvas.height - ballRadius) {
-        lives--;
-        if (!lives) {
-          alert('GAME OVER');
-          resetGame();
-        } else {
-          resetRound();
-        }
-      }
+      t += remainingTime;
+      remainingTime = 0;
     }
   }
 
@@ -193,7 +317,5 @@ function draw() {
     paddleX -= 7;
   }
 
-  x += v * dx;
-  y += v * dy;
   requestAnimationFrame(draw);
 }
