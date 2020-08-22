@@ -45,6 +45,23 @@ var palette = [
 
 // palette = [{h: 120, s: 1.0, l: 0.2}, {h: 120, s: 0.6, l: 0.5}];
 
+function setIntervalCount(callback, delay, repetitions) {
+  var counter = 0;
+  var intervalID = setInterval(() => {
+    callback();
+
+    if (++counter === repetitions) clearInterval(intervalID);
+  }, delay);
+  return intervalID;
+}
+
+function setIntervalPredicate(callback, delay) {
+  var intervalID = setInterval(() => {
+    if (!callback()) clearInterval(intervalID);
+  }, delay);
+  return intervalID;
+}
+
 function resetGame() {
   score = 0;
   lives = 3;
@@ -70,7 +87,7 @@ function resetGame() {
         x: brickX,
         y: brickY,
         status: 1,
-        color: `hsl(${brickH}deg, ${brickS * 100}%, ${brickL * 100}%)`
+        color: {h: brickH, s: brickS, l: brickL}
       };
     }
   }
@@ -111,25 +128,6 @@ function mouseMoveHandler(e) {
   }
 }
 
-function collisionDetection() {
-  for (var r = 0; r < brickRowCount; r++) {
-    for (var c = 0; c < brickColumnCount; c++) {
-      var b = bricks[r][c];
-      if (b.status == 1) {
-        if (rx > b.x && rx < b.x + brickWidth && ry > b.y &&
-            ry < b.y + brickHeight) {
-          ny = -ny;
-          b.status = 0;
-          score++;
-          if (score == brickColumnCount * brickRowCount) {
-            resetGame();
-          }
-        }
-      }
-    }
-  }
-}
-
 function closestApproachSquared(px, py) {
   var dx = px - rx;
   var dy = py - ry;
@@ -153,7 +151,14 @@ function elasticBounce(px, py) {
 function brickImpactAction(b) {
   return (px, py) => {
     elasticBounce(px, py);
-    b.status = 0;
+    setIntervalPredicate(() => {
+      b.status -= 0.1;
+      if (b.status < 0) {
+        b.status = 0;
+        return false;
+      }
+      return true;
+    }, 20);
     score++;
     if (score == brickRowCount * brickColumnCount) {
       resetGame();
@@ -264,10 +269,15 @@ function drawPaddle() {
 function drawBricks() {
   for (var r = 0; r < brickRowCount; r++) {
     for (var c = 0; c < brickColumnCount; c++) {
-      if (bricks[r][c].status == 1) {
-        ctx.fillStyle = bricks[r][c].color;
+      var b = bricks[r][c];
+      if (b.status > 0) {
+        ctx.fillStyle = `hsla(${b.color.h}deg, ${b.color.s * 100}%, ${
+            b.color.l * 100}%, ${b.status * 100}%)`;
         ctx.beginPath();
-        ctx.rect(bricks[r][c].x, bricks[r][c].y, brickWidth, brickHeight);
+        ctx.rect(
+            b.x + (1 - b.status) * brickWidth / 2,
+            b.y + (1 - b.status) * brickHeight / 2, b.status * brickWidth,
+            b.status * brickHeight);
         ctx.closePath();
         ctx.fill();
       }
