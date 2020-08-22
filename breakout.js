@@ -196,6 +196,7 @@ function elasticBounce(px, py) {
 function brickImpactAction(b) {
   return (px, py) => {
     elasticBounce(px, py);
+    b.status -= 0.1;
     setIntervalPredicate(() => {
       b.status -= 0.1;
       if (b.status < 0) {
