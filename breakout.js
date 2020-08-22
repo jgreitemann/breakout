@@ -31,9 +31,10 @@ const brickRadius =
 const brickSafetyZoneSq = Math.pow(brickRadius + ballRadius, 2);
 
 // Game state
-var gameRunning;
+var gameActive;
+var gamePaused = false;
 var overlayAlpha = 0.0;
-var overlayText = '';
+var overlayTexts = [];
 var t;
 var rx, ry;
 var nx, ny;
@@ -69,16 +70,26 @@ function setIntervalPredicate(callback, delay) {
 }
 
 function showOverlay(text) {
-  overlayText = text;
-  setIntervalCount((count) => {
-    overlayAlpha = count * overlayMaxAlpha / fadeInIterations;
-  }, animationDelay, fadeInIterations);
+  overlayTexts.push(text);
+  if (overlayTexts.length == 1) {
+    setIntervalCount((count) => {
+      overlayAlpha = count * overlayMaxAlpha / fadeInIterations;
+    }, animationDelay, fadeInIterations);
+  }
 }
 
 function hideOverlay() {
   setIntervalCount((count) => {
     overlayAlpha =
         (fadeInIterations - count - 1) * overlayAlpha / fadeInIterations;
+    if (count === fadeInIterations - 1) {
+      overlayTexts.shift();
+      if (overlayTexts.length > 0) {
+        setIntervalCount((count) => {
+          overlayAlpha = count * overlayMaxAlpha / fadeInIterations;
+        }, animationDelay, fadeInIterations);
+      }
+    }
   }, animationDelay, fadeInIterations);
 }
 
@@ -125,7 +136,7 @@ function resetGame() {
 }
 
 function resetRound() {
-  gameRunning = false;
+  gameActive = false;
   t = 0;
   rx = canvas.width / 2;
   ry = canvas.height - 3 * ballRadius - paddleHeight;
@@ -140,7 +151,7 @@ function resetRound() {
 function startRound() {
   var begin = () => {
     nextColl = nextCollision();
-    gameRunning = true;
+    gameActive = true;
   };
   if (overlayAlpha > 0) {
     setTimeout(hideOverlay, overlayDuration);
@@ -171,6 +182,16 @@ function mouseMoveHandler(e) {
   if (relativeX > 0 && relativeX < canvas.width) {
     paddleX = relativeX - paddleWidth / 2;
   }
+}
+
+function blurHandler(e) {
+  gamePaused = true;
+  showOverlay('GAME PAUSED');
+}
+
+function focusHandler(e) {
+  hideOverlay();
+  setTimeout(() => gamePaused = false, animationDelay * fadeInIterations);
 }
 
 function closestApproachSquared(px, py) {
@@ -359,7 +380,7 @@ function drawOverlay() {
   ctx.fillStyle = `rgba(255, 255, 255, ${overlayAlpha / overlayMaxAlpha})`;
   ctx.textAlign = 'center';
   ctx.fillText(
-      overlayText, canvas.width / 2, canvas.height - paddleHeight - 150);
+      overlayTexts?.[0] ?? '', canvas.width / 2, canvas.height - paddleHeight - 150);
 }
 
 function draw() {
@@ -370,7 +391,7 @@ function draw() {
   drawScore();
   drawLives();
 
-  if (gameRunning) {
+  if (gameActive && !gamePaused) {
     var remainingTime = 1.0;
     while (remainingTime > minCollisionTime) {
       if (t + remainingTime > nextColl.vt / v) {
