@@ -110,9 +110,10 @@ function resetRound() {
   gameRunning = false;
   t = 0;
   rx = canvas.width / 2;
-  ry = canvas.height - ballRadius - paddleHeight;
-  nx = Math.SQRT1_2;
-  ny = -Math.SQRT1_2;
+  ry = canvas.height - 3 * ballRadius - paddleHeight;
+  var s = 4 * Math.random() - 2;
+  ny = -1. / Math.sqrt(s * s + 1);
+  nx = -s * ny;
   leftPressed = false;
   rightPressed = false;
   setTimeout(startRound, animationDelay * fadeInIterations + 1);
