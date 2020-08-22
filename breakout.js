@@ -16,7 +16,9 @@ const brickHeight = 30;
 const brickHWindow = 5;
 const brickLWindow = 0.03;
 const minCollisionTime = 1e-2;
-const runoffHeight = 300;
+const runoffHeight = 50;
+const animationDelay = 20;
+const fadeInIterations = 50;
 
 // Dependent constants
 const brickWidth = (canvas.width - 2 * brickHorizontalMargin -
@@ -27,6 +29,7 @@ const brickRadius =
 const brickSafetyZoneSq = Math.pow(brickRadius + ballRadius, 2);
 
 // Game state
+var gameRunning;
 var t;
 var rx, ry;
 var nx, ny;
@@ -48,8 +51,7 @@ var palette = [
 function setIntervalCount(callback, delay, repetitions) {
   var counter = 0;
   var intervalID = setInterval(() => {
-    callback();
-
+    callback(counter);
     if (++counter === repetitions) clearInterval(intervalID);
   }, delay);
   return intervalID;
@@ -86,15 +88,26 @@ function resetGame() {
       bricks[r][c] = {
         x: brickX,
         y: brickY,
-        status: 1,
+        status: 0,
+        skipFrames: Math.floor(fadeInIterations / 2 * Math.random()),
         color: {h: brickH, s: brickS, l: brickL}
       };
     }
   }
+  setIntervalCount((counter) => {
+    for (var r = 0; r < brickRowCount; r++) {
+      for (var c = 0; c < brickColumnCount; c++) {
+        var b = bricks[r][c];
+        b.status = Math.min(
+            1, Math.max(0, counter - b.skipFrames) / (fadeInIterations / 2));
+      }
+    }
+  }, animationDelay, fadeInIterations + 1);
   resetRound();
 }
 
 function resetRound() {
+  gameRunning = false;
   t = 0;
   rx = canvas.width / 2;
   ry = canvas.height - ballRadius - paddleHeight;
@@ -102,6 +115,11 @@ function resetRound() {
   ny = -Math.SQRT1_2;
   leftPressed = false;
   rightPressed = false;
+  setTimeout(startRound, animationDelay * fadeInIterations + 1);
+}
+
+function startRound() {
+  gameRunning = true;
   nextColl = nextCollision();
 }
 
@@ -158,11 +176,11 @@ function brickImpactAction(b) {
         return false;
       }
       return true;
-    }, 20);
+    }, animationDelay);
     score++;
     if (score == brickRowCount * brickColumnCount) {
-      resetGame();
       alert('YOU WIN, CONGRATS!');
+      resetGame();
     }
   };
 }
@@ -179,8 +197,8 @@ function paddleBounce(px, py) {
 function ballLost(px, py) {
   lives--;
   if (lives == 0) {
-    resetGame();
     alert('GAME OVER!');
+    resetGame();
   } else {
     resetRound();
   }
@@ -303,21 +321,23 @@ function draw() {
   drawScore();
   drawLives();
 
-  var remainingTime = 1.0;
-  while (remainingTime > minCollisionTime) {
-    if (t + remainingTime > nextColl.vt / v) {
-      remainingTime = t + remainingTime - nextColl.vt / v;
+  if (gameRunning) {
+    var remainingTime = 1.0;
+    while (remainingTime > minCollisionTime) {
+      if (t + remainingTime > nextColl.vt / v) {
+        remainingTime = t + remainingTime - nextColl.vt / v;
 
-      t = 0;
-      rx += nextColl.vt * nx;
-      ry += nextColl.vt * ny;
+        t = 0;
+        rx += nextColl.vt * nx;
+        ry += nextColl.vt * ny;
 
-      nextColl.action();
+        nextColl.action();
 
-      nextColl = nextCollision();
-    } else {
-      t += remainingTime;
-      remainingTime = 0;
+        nextColl = nextCollision();
+      } else {
+        t += remainingTime;
+        remainingTime = 0;
+      }
     }
   }
 
