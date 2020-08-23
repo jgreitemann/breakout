@@ -452,5 +452,13 @@ function draw() {
     paddleX -= paddleSpeed;
   }
 
+  if (targetX && targetY) {
+    ctx.beginPath();
+    ctx.arc(targetX, targetY, 10, 0, 2 * Math.PI, false);
+    ctx.fillStyle = 'red';
+    ctx.fill();
+    ctx.closePath();
+  }
+
   requestAnimationFrame(draw);
 }
