@@ -1,7 +1,9 @@
 const ballInaccuracy = 2;
+const paddleTranslationFactor = 1;
 
 var prevX, prevY;
 var targetX, targetY;
+var paddleControlTimeoutID = null;
 
 function gameTickUpdate(x, y) {
   x += ballInaccuracy * (2 * Math.random() - 1);
@@ -22,13 +24,22 @@ function gameTickUpdate(x, y) {
       }
     }
 
-    if (targetX > paddleX + paddleWidth / 2) {
+    var translation = targetX - (paddleX + paddleWidth / 2);
+
+    if (translation > 0) {
       rightPressed = true;
       leftPressed = false;
     } else {
       leftPressed = true;
       rightPressed = false;
     }
+
+    clearTimeout(paddleControlTimeoutID);
+    var translationDuration = Math.abs(translation) * paddleTranslationFactor;
+    paddleControlTimeoutID = setTimeout(() => {
+      rightPressed = false;
+      leftPressed = false;
+    }, translationDuration);
   }
   prevX = x;
   prevY = y;
