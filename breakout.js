@@ -31,8 +31,9 @@ const brickRadius =
 const brickSafetyZoneSq = Math.pow(brickRadius + ballRadius, 2);
 
 // Game state
+var overlayFactor = 1.0;
 var overlayAlpha = 0.0;
-var activeOverlays = [];
+var activeOverlays = [''];
 var overlayTexts = [];
 var overlayIntervalID = null;
 var whenOverlayVisible = [];
@@ -74,14 +75,14 @@ function setIntervalPredicate(callback, delay) {
 function showOverlay(text) {
   activeOverlays.push(text);
   if (!overlayTexts.includes(text)) overlayTexts.push(text);
-  if (overlayAlpha < 1) {
+  if (overlayFactor < 1) {
     if (overlayIntervalID) {
       clearInterval(overlayIntervalID);
       overlayIntervalID = null;
     }
-    var startOverlayAlpha = overlayAlpha;
+    var startOverlayAlpha = overlayFactor;
     overlayIntervalID = setIntervalCount(count => {
-      overlayAlpha = startOverlayAlpha +
+      overlayFactor = startOverlayAlpha +
           (1 - startOverlayAlpha) * count / (fadeInIterations - 1);
       if (count === fadeInIterations - 1) {
         whenOverlayVisible.forEach(action => action());
@@ -107,9 +108,9 @@ function hideOverlay(text) {
       overlayIntervalID = null;
     }
     whenOverlayHidden.push(removeText);
-    var startOverlayAlpha = overlayAlpha;
+    var startOverlayAlpha = overlayFactor;
     overlayIntervalID = setIntervalCount(count => {
-      overlayAlpha =
+      overlayFactor =
           startOverlayAlpha * (fadeInIterations - count - 1) / fadeInIterations;
       if (count === fadeInIterations - 1) {
         whenOverlayHidden.forEach(action => action());
@@ -155,7 +156,12 @@ function resetGame() {
         x: brickX,
         y: brickY,
         status: 0,
-        skipFrames: Math.floor(fadeInIterations * Math.random()),
+        skipFrames: Math.max(
+            0,
+            r * fadeInIterations / brickRowCount +
+                Math.floor(
+                    fadeInIterations / brickRowCount *
+                    (4 * Math.random() - 3))),
         color: {h: brickH, s: brickS, l: brickL}
       };
     }
@@ -168,7 +174,11 @@ function resetGame() {
             Math.min(1, Math.max(0, count - b.skipFrames) / fadeInIterations);
       }
     }
-    if (count == 2 * fadeInIterations) nextColl = nextCollision();
+    if (count == 2 * fadeInIterations) {
+      nextColl = nextCollision();
+      whenOverlayHidden.push(() => overlayAlpha = overlayMaxAlpha);
+      hideOverlay('');
+    }
   }, animationDelay, 2 * fadeInIterations + 1);
   resetRound();
 }
@@ -393,10 +403,10 @@ function drawLives() {
 }
 
 function drawOverlay() {
-  ctx.fillStyle = `rgba(0, 0, 0, ${overlayAlpha * overlayMaxAlpha})`;
+  ctx.fillStyle = `rgba(0, 0, 0, ${overlayFactor * overlayAlpha})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.font = '42px Arial';
-  ctx.fillStyle = `rgba(255, 255, 255, ${overlayAlpha})`;
+  ctx.fillStyle = `rgba(255, 255, 255, ${overlayFactor})`;
   ctx.textAlign = 'center';
   for (var i = 0; i < overlayTexts.length; ++i) {
     ctx.fillText(
@@ -413,11 +423,11 @@ function draw() {
   drawScore();
   drawLives();
 
-  if (overlayAlpha > 0) {
+  if (overlayFactor > 0) {
     drawOverlay();
   }
 
-  var remainingTime = 1 - overlayAlpha;
+  var remainingTime = 1 - overlayFactor;
   while (nextColl && remainingTime > minCollisionTime) {
     if (t + remainingTime > nextColl.vt / v) {
       remainingTime = t + remainingTime - nextColl.vt / v;
