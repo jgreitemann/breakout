@@ -7,6 +7,7 @@ const v = 8;
 const paddleConvexity = 2;
 const paddleHeight = 8;
 const paddleWidth = 120;
+const paddleSpeed = 10;
 const brickColumnCount = 10;
 const brickRowCount = 6;
 const brickPadding = 10;
@@ -446,9 +447,9 @@ function draw() {
   }
 
   if (rightPressed && paddleX < canvas.width - paddleWidth) {
-    paddleX += 7;
+    paddleX += paddleSpeed;
   } else if (leftPressed && paddleX > 0) {
-    paddleX -= 7;
+    paddleX -= paddleSpeed;
   }
 
   requestAnimationFrame(draw);
