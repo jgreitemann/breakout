@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Breakout</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="breakout.js" defer></script>
+    <script src="ai.js" defer></script>
+    <script>
+        window.onload = () => {
+            document.addEventListener("keydown", keyDownHandler, false);
+            document.addEventListener("keyup", keyUpHandler, false);
+            document.addEventListener("mousemove", mouseMoveHandler, false);
+            window.addEventListener("blur", blurHandler, false);
+            window.addEventListener("focus", focusHandler, false);
+            resetGame();
+            draw();
+
+            setInterval(() => gameTickUpdate(rx + v * t * nx, ry + v * t * ny), 50);
+        };
+    </script>
+
+</head>
+
+<body>
+
+    <canvas id="myCanvas" width="800" height="600"></canvas>
+
+    <footer>
+        <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img
+                alt="Creative Commons License CC-BY-SA 4.0"
+                src="https://i.creativecommons.org/l/by-sa/4.0/80x15.png" /></a>
+        <span>
+            This is a derivative of the <a
+                href="https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript">MDN "2D
+                breakout game using pure JavaScript" tutorial project</a> by Andrzej Mazur and Mozilla Contributors used
+            under <a href="https://creativecommons.org/licenses/by-sa/2.5/">CC BY-SA 2.5</a>. This work is itself
+            licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a> by Jonas
+            Greitemann.
+        </span>
+    </footer>
+
+</body>
+
+</html>
