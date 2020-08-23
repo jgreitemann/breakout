@@ -18,7 +18,7 @@ const brickLWindow = 0.03;
 const minCollisionTime = 1e-2;
 const runoffHeight = 50;
 const animationDelay = 20;
-const fadeInIterations = 50;
+const fadeInIterations = 25;
 const overlayDuration = 1000;
 const overlayMaxAlpha = 0.5;
 
@@ -31,14 +31,16 @@ const brickRadius =
 const brickSafetyZoneSq = Math.pow(brickRadius + ballRadius, 2);
 
 // Game state
-var gameActive;
-var gamePaused = false;
 var overlayAlpha = 0.0;
+var activeOverlays = [];
 var overlayTexts = [];
+var overlayIntervalID = null;
+var whenOverlayVisible = [];
+var whenOverlayHidden = [];
 var t;
 var rx, ry;
 var nx, ny;
-var paddleX;
+var paddleX = (canvas.width - paddleWidth) / 2;
 var score;
 var lives;
 var bricks;
@@ -70,33 +72,68 @@ function setIntervalPredicate(callback, delay) {
 }
 
 function showOverlay(text) {
-  overlayTexts.push(text);
-  if (overlayTexts.length == 1) {
-    setIntervalCount((count) => {
-      overlayAlpha = count * overlayMaxAlpha / fadeInIterations;
+  activeOverlays.push(text);
+  if (!overlayTexts.includes(text)) overlayTexts.push(text);
+  if (overlayAlpha < 1) {
+    if (overlayIntervalID) {
+      clearInterval(overlayIntervalID);
+      overlayIntervalID = null;
+    }
+    var startOverlayAlpha = overlayAlpha;
+    overlayIntervalID = setIntervalCount(count => {
+      overlayAlpha = startOverlayAlpha +
+          (1 - startOverlayAlpha) * count / (fadeInIterations - 1);
+      if (count === fadeInIterations - 1) {
+        whenOverlayVisible.forEach(action => action());
+        whenOverlayVisible = [];
+        overlayIntervalID = null;
+      }
     }, animationDelay, fadeInIterations);
   }
 }
 
-function hideOverlay() {
-  setIntervalCount((count) => {
-    overlayAlpha =
-        (fadeInIterations - count - 1) * overlayAlpha / fadeInIterations;
-    if (count === fadeInIterations - 1) {
-      overlayTexts.shift();
-      if (overlayTexts.length > 0) {
-        setIntervalCount((count) => {
-          overlayAlpha = count * overlayMaxAlpha / fadeInIterations;
-        }, animationDelay, fadeInIterations);
-      }
+function hideOverlay(text) {
+  {
+    var pos = activeOverlays.indexOf(text);
+    if (pos >= 0) activeOverlays.splice(pos, 1);
+  }
+  var removeText = () => {
+    var pos = overlayTexts.indexOf(text);
+    if (pos >= 0) overlayTexts.splice(pos, 1);
+  };
+  if (activeOverlays.length === 0) {
+    if (overlayIntervalID) {
+      clearInterval(overlayIntervalID);
+      overlayIntervalID = null;
     }
-  }, animationDelay, fadeInIterations);
+    whenOverlayHidden.push(removeText);
+    var startOverlayAlpha = overlayAlpha;
+    overlayIntervalID = setIntervalCount(count => {
+      overlayAlpha =
+          startOverlayAlpha * (fadeInIterations - count - 1) / fadeInIterations;
+      if (count === fadeInIterations - 1) {
+        whenOverlayHidden.forEach(action => action());
+        whenOverlayHidden = [];
+        overlayIntervalID = null;
+      }
+    }, animationDelay, fadeInIterations);
+  } else {
+    removeText();
+  }
+}
+
+function showOverlayFor(text, duration, whenVisible = null) {
+  if (whenVisible)
+    whenOverlayVisible.push(() => {
+      whenVisible();
+      setTimeout(() => hideOverlay(text), duration);
+    });
+  showOverlay(text);
 }
 
 function resetGame() {
   score = 0;
   lives = 3;
-  paddleX = (canvas.width - paddleWidth) / 2;
 
   bricks = [];
   for (var r = 0; r < brickRowCount; r++) {
@@ -118,25 +155,25 @@ function resetGame() {
         x: brickX,
         y: brickY,
         status: 0,
-        skipFrames: Math.floor(fadeInIterations / 2 * Math.random()),
+        skipFrames: Math.floor(fadeInIterations * Math.random()),
         color: {h: brickH, s: brickS, l: brickL}
       };
     }
   }
-  setIntervalCount((counter) => {
+  setIntervalCount(count => {
     for (var r = 0; r < brickRowCount; r++) {
       for (var c = 0; c < brickColumnCount; c++) {
         var b = bricks[r][c];
-        b.status = Math.min(
-            1, Math.max(0, counter - b.skipFrames) / (fadeInIterations / 2));
+        b.status =
+            Math.min(1, Math.max(0, count - b.skipFrames) / fadeInIterations);
       }
     }
-  }, animationDelay, fadeInIterations + 1);
+    if (count == 2 * fadeInIterations) nextColl = nextCollision();
+  }, animationDelay, 2 * fadeInIterations + 1);
   resetRound();
 }
 
 function resetRound() {
-  gameActive = false;
   t = 0;
   rx = canvas.width / 2;
   ry = canvas.height - 3 * ballRadius - paddleHeight;
@@ -145,20 +182,7 @@ function resetRound() {
   nx = -s * ny;
   leftPressed = false;
   rightPressed = false;
-  setTimeout(startRound, animationDelay * fadeInIterations + 1);
-}
-
-function startRound() {
-  var begin = () => {
-    nextColl = nextCollision();
-    gameActive = true;
-  };
-  if (overlayAlpha > 0) {
-    setTimeout(hideOverlay, overlayDuration);
-    setTimeout(begin, overlayDuration + animationDelay * fadeInIterations);
-  } else {
-    setTimeout(begin, animationDelay * fadeInIterations);
-  }
+  nextColl = nextCollision();
 }
 
 function keyDownHandler(e) {
@@ -185,13 +209,11 @@ function mouseMoveHandler(e) {
 }
 
 function blurHandler(e) {
-  gamePaused = true;
   showOverlay('GAME PAUSED');
 }
 
 function focusHandler(e) {
-  hideOverlay();
-  setTimeout(() => gamePaused = false, animationDelay * fadeInIterations);
+  hideOverlay('GAME PAUSED');
 }
 
 function closestApproachSquared(px, py) {
@@ -228,8 +250,7 @@ function brickImpactAction(b) {
     }, animationDelay);
     score++;
     if (score == brickRowCount * brickColumnCount) {
-      showOverlay('YOU WIN, CONGRATS!');
-      resetGame();
+      showOverlayFor('YOU WIN, CONGRATS!', overlayDuration, resetGame);
     }
   };
 }
@@ -246,15 +267,13 @@ function paddleBounce(px, py) {
 function ballLost(px, py) {
   lives--;
   if (lives == 0) {
-    showOverlay('GAME OVER!');
-    resetGame();
+    showOverlayFor('GAME OVER!', overlayDuration, resetGame);
   } else {
     if (lives > 1) {
-      showOverlay(`${lives} LIVES REMAINING`);
+      showOverlayFor(`${lives} LIVES REMAINING`, overlayDuration, resetRound);
     } else {
-      showOverlay('ONE LIFE REMAINING');
+      showOverlayFor('ONE LIFE REMAINING', overlayDuration, resetRound);
     }
-    resetRound();
   }
 }
 
@@ -319,7 +338,7 @@ function nextCollision() {
     }
   }
   return collisions.filter(col => col && col.vt >= minCollisionTime)
-      .reduce((acc, col) => acc.vt < col.vt ? acc : col);
+      .reduce((acc, col) => acc && acc.vt < col.vt ? acc : col, null);
 }
 
 function drawBall() {
@@ -374,13 +393,16 @@ function drawLives() {
 }
 
 function drawOverlay() {
-  ctx.fillStyle = `rgba(0, 0, 0, ${overlayAlpha})`;
+  ctx.fillStyle = `rgba(0, 0, 0, ${overlayAlpha * overlayMaxAlpha})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.font = '42px Arial';
-  ctx.fillStyle = `rgba(255, 255, 255, ${overlayAlpha / overlayMaxAlpha})`;
+  ctx.fillStyle = `rgba(255, 255, 255, ${overlayAlpha})`;
   ctx.textAlign = 'center';
-  ctx.fillText(
-      overlayTexts?.[0] ?? '', canvas.width / 2, canvas.height - paddleHeight - 150);
+  for (var i = 0; i < overlayTexts.length; ++i) {
+    ctx.fillText(
+        overlayTexts[i], canvas.width / 2,
+        canvas.height - paddleHeight - 150 + 50 * i);
+  }
 }
 
 function draw() {
@@ -391,26 +413,26 @@ function draw() {
   drawScore();
   drawLives();
 
-  if (gameActive && !gamePaused) {
-    var remainingTime = 1.0;
-    while (remainingTime > minCollisionTime) {
-      if (t + remainingTime > nextColl.vt / v) {
-        remainingTime = t + remainingTime - nextColl.vt / v;
-
-        t = 0;
-        rx += nextColl.vt * nx;
-        ry += nextColl.vt * ny;
-
-        nextColl.action();
-
-        nextColl = nextCollision();
-      } else {
-        t += remainingTime;
-        remainingTime = 0;
-      }
-    }
-  } else {
+  if (overlayAlpha > 0) {
     drawOverlay();
+  }
+
+  var remainingTime = 1 - overlayAlpha;
+  while (nextColl && remainingTime > minCollisionTime) {
+    if (t + remainingTime > nextColl.vt / v) {
+      remainingTime = t + remainingTime - nextColl.vt / v;
+
+      t = 0;
+      rx += nextColl.vt * nx;
+      ry += nextColl.vt * ny;
+
+      nextColl.action();
+
+      nextColl = nextCollision();
+    } else {
+      t += remainingTime;
+      remainingTime = 0;
+    }
   }
 
   if (rightPressed && paddleX < canvas.width - paddleWidth) {
