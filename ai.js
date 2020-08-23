@@ -1,6 +1,7 @@
-const ballInaccuracy = 20;
+const ballInaccuracy = 5;
+const paddleInaccuracy = 5;
 const paddleTranslationFactor = 1;
-const historyLength = 8;
+const historyLength = 5;
 
 var histoX = [], histoY = [];
 var targetX, targetY;
@@ -37,7 +38,9 @@ function gameTickUpdate(x, y) {
       }
     }
 
-    var translation = targetX - (paddleX + paddleWidth / 2);
+    var paddlePos = paddleX + paddleWidth / 2
+    paddlePos += paddleInaccuracy * (2 * Math.random() - 1);
+    var translation = targetX - paddlePos;
 
     if (translation > 0) {
       rightPressed = true;
