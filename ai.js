@@ -1,16 +1,29 @@
-const ballInaccuracy = 2;
+const ballInaccuracy = 20;
 const paddleTranslationFactor = 1;
+const historyLength = 8;
 
-var prevX, prevY;
+var histoX = [], histoY = [];
 var targetX, targetY;
 var paddleControlTimeoutID = null;
 
 function gameTickUpdate(x, y) {
   x += ballInaccuracy * (2 * Math.random() - 1);
   y += ballInaccuracy * (2 * Math.random() - 1);
-  if (prevX && prevY) {
-    var dx = x - prevX;
-    var dy = y - prevY;
+
+  histoX.push(x);
+  histoY.push(y);
+  if (histoX.length > historyLength) histoX.shift();
+  if (histoY.length > historyLength) histoY.shift();
+
+  if (histoX.length > 1 && histoY.length) {
+    var dx = 0, dy = 0;
+    var N = Math.min(histoX.length, histoY.length);
+    for (var i = 1; i < N; ++i) {
+      dx += histoX[i] - histoX[i - 1];
+      dy += histoY[i] - histoY[i - 1];
+    }
+    dx /= N - 1;
+    dy /= N - 1;
 
     targetX = canvas.width / 2;
     targetY = canvas.height - paddleHeight - ballRadius;
@@ -41,6 +54,4 @@ function gameTickUpdate(x, y) {
       leftPressed = false;
     }, translationDuration);
   }
-  prevX = x;
-  prevY = y;
 }
