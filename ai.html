@@ -6,6 +6,7 @@
     <title>Breakout</title>
     <link rel="stylesheet" href="style.css" />
     <script src="breakout.js" defer></script>
+    <script src="ai.js" defer></script>
     <script>
         window.onload = () => {
             document.addEventListener("keydown", keyDownHandler, false);
@@ -15,6 +16,8 @@
             window.addEventListener("focus", focusHandler, false);
             resetGame();
             draw();
+
+            setInterval(() => gameTickUpdate(rx + v * t * nx, ry + v * t * ny), 50);
         };
     </script>
 
